@@ -1,17 +1,20 @@
 package com.example.b2win.config.jwt;
 
+import com.example.b2win.refreshtoken.dto.TokenDto;
 import com.example.b2win.user.domain.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Header;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
+
 import java.util.Collections;
 import java.util.Date;
 import java.util.Set;
@@ -21,23 +24,41 @@ import java.util.Set;
 public class TokenProvider {
 
     private final JwtProperties jwtProperties;
+    private static final long ACCESS_TIME =  60 * 1000L;
+    private static final long REFRESH_TIME =  2 * 60 * 1000L;
+    public static final String ACCESS_TOKEN = "Access_Token";
+    public static final String REFRESH_TOKEN = "Refresh_Token";
 
-    public String generateToken(User user, Duration expiredAt) {
-        Date now = new Date();
-        return makeToken(new Date(now.getTime() + expiredAt.toMillis()), user);
+
+    // header 토큰을 가져오는 기능
+    public String getHeaderToken(HttpServletRequest request, String type) {
+        return type.equals("Access") ? request.getHeader(ACCESS_TOKEN) :request.getHeader(REFRESH_TOKEN);
     }
 
+    // 토큰 생성
+    public TokenDto createAllToken(User user) {
+        return new TokenDto(makeToken(user, "Access"), makeToken(user, "Refresh"));
+    }
+
+//    public String generateToken(User user, Duration expiredAt) {
+//        Date now = new Date();
+//        return makeToken(new Date(now.getTime() + expiredAt.toMillis()), user);
+//    }
+
     // JWT 토큰 생성 메서드
-    private String makeToken(Date expiry, User user) {
-        Date now = new Date();
+    private String makeToken(User user, String type) {
+
+        Date date = new Date();
+
+        long time = type.equals("Access") ? ACCESS_TIME : REFRESH_TIME;
 
         return Jwts.builder()
                 .setHeaderParam(Header.TYPE, Header.JWT_TYPE) // 헤더 typ : JWT
                 // 내용 iss : ~~ (propertise 파일에서 설정한 값)
                 .setIssuer(jwtProperties.getIssuer())
-                .setIssuedAt(now)  // 내용 iat : 현재 시간
-                .setExpiration(expiry) // 내용 exp : expiry 멤버 변수 값
-                .setSubject(user.getEmail()) // 내용 sub : 유저의 이메일
+                .setIssuedAt(date)  // 내용 iat : 현재 시간
+                .setExpiration(new Date(date.getTime() + time))
+                .setSubject(user.getAccount()) // 내용 sub : 유저의 계정
                 .claim("id", user.getId())  // 클레임 id : 유저 ID
                 // 서명 : 비밀값과 함께 해시값을 HS256 방식으로 암호화
                 .signWith(SignatureAlgorithm.HS256, jwtProperties.getSecretKey())
@@ -77,4 +98,15 @@ public class TokenProvider {
                 .parseClaimsJws(token)
                 .getBody();
     }
+
+    // 어세스 토큰 헤더 설정
+    public void setHeaderAccessToken(HttpServletResponse response, String accessToken) {
+        response.setHeader("Access_Token", accessToken);
+    }
+
+    // 리프레시 토큰 헤더 설정
+    public void setHeaderRefreshToken(HttpServletResponse response, String refreshToken) {
+        response.setHeader("Refresh_Token", refreshToken);
+    }
+
 }

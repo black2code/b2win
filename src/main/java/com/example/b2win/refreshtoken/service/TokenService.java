@@ -1,6 +1,7 @@
 package com.example.b2win.refreshtoken.service;
 
 import com.example.b2win.config.jwt.TokenProvider;
+import com.example.b2win.refreshtoken.dto.TokenDto;
 import com.example.b2win.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import com.example.b2win.user.domain.User;
@@ -16,7 +17,7 @@ public class TokenService {
     private final RefreshTokenService refreshTokenService;
     private final UserService userService;
 
-    public String createNewAccessToken(String refreshToken) {
+    public TokenDto createNewAccessToken(String refreshToken) {
         // 토큰 유효성 검사에 실패하면 예외 발생
         if (!tokenProvider.validToken(refreshToken)) {
             throw new IllegalArgumentException("Unexpected token");
@@ -25,7 +26,7 @@ public class TokenService {
         Long userId = refreshTokenService.findByRefreshToken(refreshToken).getUserId();
         User user = userService.findById(userId);
 
-        return tokenProvider.generateToken(user, Duration.ofHours(2));
+        return tokenProvider.createAllToken(user);
     }
 }
 
