@@ -27,10 +27,11 @@ public class User implements UserDetails {
     private String name;
 
     @Column(name = "birthday", nullable = false)
-    private String birthday;
+    private LocalDate birthday;
 
     @Column(name = "sex", nullable = false)
-    private String sex;
+    @Enumerated(EnumType.STRING)
+    private Sex sex;
 
     @Column(name = "account", nullable = false, unique = true)
     private String account;
@@ -41,12 +42,17 @@ public class User implements UserDetails {
     @Column(name = "email", nullable = true)
     private String email;
 
+    @Column(name = "password_expiration_date", nullable = false)
     private LocalDate passwordExpirationDate;
 
+    @Column(name = "password_error_count", nullable = false)
     private int passwordErrorCount;
 
+    @Column(name = "locked", nullable = false)
+    private boolean locked;
+
     @Builder
-    public User(String name, String birthday, String sex, String account, String password, String email){
+    public User(String name, LocalDate birthday, Sex sex, String account, String password, String email){
         this.name = name;
         this.birthday = birthday;
         this.sex = sex;
@@ -54,15 +60,16 @@ public class User implements UserDetails {
         this.password = password;
         this.email = email;
         this.passwordExpirationDate = passwordExpirationDate();
-        this.passwordErrorCount = passwordErrorCount();
+        this.passwordErrorCount = 0;
+        this.locked = false;
     }
 
     public LocalDate passwordExpirationDate() {
         return passwordExpirationDate = LocalDate.now().plusMonths(6); // 비밀번호 유효기간은 6개월로 설정
     }
 
-    public int passwordErrorCount() {
-        return passwordErrorCount = 0; // 비밀번호 에러 횟수 초기화
+    public void resetPasswordErrorCount() {
+        this.passwordErrorCount = 0; // 비밀번호 에러 횟수 초기화
     }
 
     public boolean isPasswordExpired() {
@@ -73,8 +80,16 @@ public class User implements UserDetails {
         this.passwordErrorCount++;
     }
 
-    public void resetPasswordErrorCount() {
-        this.passwordErrorCount = 0;
+    public void lockAccount() {
+        this.locked = true;
+    }
+
+    public boolean isLocked() {
+        return locked;
+    }
+
+    public void unlockAccount() {
+        this.locked = false;
     }
 
     @Override
